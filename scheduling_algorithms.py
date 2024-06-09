@@ -18,6 +18,7 @@ class Scheduler:
     def __init__(self, tasks):
         self.tasks = tasks
         self.time = 0
+        self.completed_tasks = []
 
     def run(self):
         raise NotImplementedError
@@ -36,12 +37,12 @@ class Scheduler:
         print(f"Average Waiting Time: {avg_waiting_time:.2f}")
         print(f"Average Response Time: {avg_response_time:.2f}")
 
+
 """
 First-Come, First-Served (FCFS)
 """
 class FCFS(Scheduler):
     def run(self):
-        completed_tasks = []
         for task in self.tasks:
             start_time = self.time
             self.time += task.burst
@@ -50,7 +51,7 @@ class FCFS(Scheduler):
             waiting_time = start_time
             response_time = start_time
 
-            completed_tasks.append({
+            self.completed_tasks.append({
                 'task': task.name,
                 'start_time': start_time,
                 'completion_time': completion_time,
@@ -59,7 +60,7 @@ class FCFS(Scheduler):
                 'response_time': response_time
             })
 
-        self.calculate_metrics(completed_tasks)
+        self.calculate_metrics(self.completed_tasks)
 
 
 """
@@ -67,7 +68,6 @@ Shortest-Job-First (SJF)
 """
 class SJF(Scheduler):
     def run(self):
-        completed_tasks = []
         tasks = sorted(self.tasks, key=lambda x: x.burst)
         for task in tasks:
             start_time = self.time
@@ -77,7 +77,7 @@ class SJF(Scheduler):
             waiting_time = start_time
             response_time = start_time
 
-            completed_tasks.append({
+            self.completed_tasks.append({
                 'task': task.name,
                 'start_time': start_time,
                 'completion_time': completion_time,
@@ -86,14 +86,13 @@ class SJF(Scheduler):
                 'response_time': response_time
             })
 
-        self.calculate_metrics(completed_tasks)
+        self.calculate_metrics(self.completed_tasks)
 
 """
 Priority Scheduling
 """
 class Priority(Scheduler):
     def run(self):
-        completed_tasks = []
         tasks = sorted(self.tasks, key=lambda x: x.priority, reverse=True)
         for task in tasks:
             start_time = self.time
@@ -103,7 +102,7 @@ class Priority(Scheduler):
             waiting_time = start_time
             response_time = start_time
 
-            completed_tasks.append({
+            self.completed_tasks.append({
                 'task': task.name,
                 'start_time': start_time,
                 'completion_time': completion_time,
@@ -112,7 +111,7 @@ class Priority(Scheduler):
                 'response_time': response_time
             })
 
-        self.calculate_metrics(completed_tasks)
+        self.calculate_metrics(self.completed_tasks)
 
 
 """
@@ -124,7 +123,6 @@ class RoundRobin(Scheduler):
         self.time_quantum = time_quantum
 
     def run(self):
-        completed_tasks = []
         task_queue = self.tasks[:]
         while task_queue:
             task = task_queue.pop(0)
@@ -139,7 +137,7 @@ class RoundRobin(Scheduler):
                 waiting_time = completion_time - task.burst
                 response_time = self.time - task.burst
 
-                completed_tasks.append({
+                self.completed_tasks.append({
                     'task': task.name,
                     'start_time': self.time - task.burst,
                     'completion_time': completion_time,
@@ -148,8 +146,7 @@ class RoundRobin(Scheduler):
                     'response_time': response_time
                 })
 
-        self.calculate_metrics(completed_tasks)
-
+        self.calculate_metrics(self.completed_tasks)
 
 """
 Priority with Round-Robin
@@ -160,38 +157,40 @@ class PriorityRoundRobin(Scheduler):
         self.time_quantum = time_quantum
 
     def run(self):
-        completed_tasks = []
-        priority_queue = sorted(self.tasks, key=lambda x: x.priority, reverse=True)
-        while priority_queue:
-            current_priority = priority_queue[0].priority
-            same_priority_tasks = [task for task in priority_queue if task.priority == current_priority]
-            for task in same_priority_tasks:
-                priority_queue.remove(task)
+        priority_queues = {}
+        for task in self.tasks:
+            if task.priority not in priority_queues:
+                priority_queues[task.priority] = []
+            priority_queues[task.priority].append(task)
 
-            task_queue = same_priority_tasks[:]
-            while task_queue:
-                task = task_queue.pop(0)
-                if task.remaining_burst > self.time_quantum:
-                    self.time += self.time_quantum
-                    task.remaining_burst -= self.time_quantum
-                    task_queue.append(task)
-                else:
-                    self.time += task.remaining_burst
-                    completion_time = self.time
-                    turnaround_time = completion_time
-                    waiting_time = completion_time - task.burst
-                    response_time = self.time - task.burst
+        while any(priority_queues.values()):
+            for priority in sorted(priority_queues.keys(), reverse=True):
+                task_queue = priority_queues[priority]
+                new_queue = []
+                while task_queue:
+                    task = task_queue.pop(0)
+                    if task.remaining_burst > self.time_quantum:
+                        self.time += self.time_quantum
+                        task.remaining_burst -= self.time_quantum
+                        new_queue.append(task)
+                    else:
+                        self.time += task.remaining_burst
+                        completion_time = self.time
+                        turnaround_time = completion_time
+                        waiting_time = completion_time - task.burst
+                        response_time = self.time - task.burst
 
-                    completed_tasks.append({
-                        'task': task.name,
-                        'start_time': self.time - task.burst,
-                        'completion_time': completion_time,
-                        'turnaround_time': turnaround_time,
-                        'waiting_time': waiting_time,
-                        'response_time': response_time
-                    })
+                        self.completed_tasks.append({
+                            'task': task.name,
+                            'start_time': self.time - task.burst,
+                            'completion_time': completion_time,
+                            'turnaround_time': turnaround_time,
+                            'waiting_time': waiting_time,
+                            'response_time': response_time
+                        })
+                priority_queues[priority] = new_queue
 
-        self.calculate_metrics(completed_tasks)
+        self.calculate_metrics(self.completed_tasks)
 
 
 # Sample tasks and executions:
