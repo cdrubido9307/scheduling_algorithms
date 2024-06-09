@@ -75,3 +75,6 @@ The scheduler will calculate and display the average turnaround time, waiting ti
 Two additional challenges include:
 1. Fixing the possible race condition on the variable that assigns task identifiers in an SMP environment.
 2. Calculating and displaying the average turnaround time, waiting time, and response time for each scheduling algorithm.
+
+## Tu run via Replit use the following link:
+https://replit.com/@cdrubido/schedulingalgorithms?v=1
